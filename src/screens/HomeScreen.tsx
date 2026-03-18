@@ -10,12 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ref, set, get } from 'firebase/database';
 import { db } from '../firebase';
 import { generateRoomCode } from '../utils/roomCode';
-import { GameRoom, RootStackParamList } from '../types';
+import { Difficulty, GameRoom, RootStackParamList } from '../types';
+import { DIFFICULTY_LABELS } from '../utils/wordGenerator';
 
 const PLAYER_COLORS = ['#E74C3C', '#3498DB', '#2ECC71', '#9B59B6', '#F39C12'];
 
@@ -30,6 +32,8 @@ export default function HomeScreen({ navigation }: Props) {
   const [roomCode, setRoomCode] = useState('');
   const [mode, setMode] = useState<'home' | 'join'>('home');
   const [loading, setLoading] = useState(false);
+  const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'create' | 'solo' | null>(null);
 
   const playerId = useRef(
     'player_' + Math.random().toString(36).substring(2, 10),
@@ -38,7 +42,11 @@ export default function HomeScreen({ navigation }: Props) {
   const getPlayerColor = (index: number) =>
     PLAYER_COLORS[index % PLAYER_COLORS.length];
 
-  const handleCreateRoom = async () => {
+  const handleCreateRoom = async (difficulty: Difficulty) => {
+    if (!db) {
+      Alert.alert('Firebase no configurado', 'Configura las credenciales en src/firebase.ts o variables EXPO_PUBLIC_FIREBASE_*');
+      return;
+    }
     if (!playerName.trim()) {
       Alert.alert('Error', 'Por favor ingresa tu nombre');
       return;
@@ -50,6 +58,7 @@ export default function HomeScreen({ navigation }: Props) {
         code,
         hostId: playerId,
         status: 'waiting',
+        difficulty,
         players: {
           [playerId]: {
             id: playerId,
@@ -75,6 +84,10 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   const handleJoinRoom = async () => {
+    if (!db) {
+      Alert.alert('Firebase no configurado', 'Configura las credenciales en src/firebase.ts o variables EXPO_PUBLIC_FIREBASE_*');
+      return;
+    }
     if (!playerName.trim()) {
       Alert.alert('Error', 'Por favor ingresa tu nombre');
       return;
@@ -121,6 +134,33 @@ export default function HomeScreen({ navigation }: Props) {
     }
   };
 
+  const handleSoloMode = (difficulty: Difficulty) => {
+    navigation.navigate('Solo', {
+      playerName: playerName.trim() || 'Jugador',
+      difficulty,
+    });
+  };
+
+  const openDifficultySelector = (action: 'create' | 'solo') => {
+    setPendingAction(action);
+    setShowDifficultyModal(true);
+  };
+
+  const handleDifficultySelected = async (difficulty: Difficulty) => {
+    setShowDifficultyModal(false);
+    const action = pendingAction;
+    setPendingAction(null);
+
+    if (action === 'create') {
+      await handleCreateRoom(difficulty);
+      return;
+    }
+
+    if (action === 'solo') {
+      handleSoloMode(difficulty);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -148,7 +188,7 @@ export default function HomeScreen({ navigation }: Props) {
             <>
               <TouchableOpacity
                 style={styles.primaryButton}
-                onPress={handleCreateRoom}
+                onPress={() => openDifficultySelector('create')}
                 disabled={loading}
               >
                 {loading ? (
@@ -164,6 +204,14 @@ export default function HomeScreen({ navigation }: Props) {
                 disabled={loading}
               >
                 <Text style={styles.secondaryButtonText}>🔗 Unirse a Sala</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.soloButton}
+                onPress={() => openDifficultySelector('solo')}
+                disabled={loading}
+              >
+                <Text style={styles.soloButtonText}>🧩 Modo Solitario</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -206,6 +254,38 @@ export default function HomeScreen({ navigation }: Props) {
           Encuentra todas las palabras antes que los demás jugadores
         </Text>
       </ScrollView>
+
+      <Modal visible={showDifficultyModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Selecciona dificultad</Text>
+            <Text style={styles.modalSubtitle}>
+              Elige el nivel para tu partida
+            </Text>
+
+            {(['facil', 'medio', 'dificil', 'experto'] as Difficulty[]).map((difficulty) => (
+              <TouchableOpacity
+                key={difficulty}
+                style={styles.difficultyButton}
+                onPress={() => handleDifficultySelected(difficulty)}
+                disabled={loading}
+              >
+                <Text style={styles.difficultyButtonText}>{DIFFICULTY_LABELS[difficulty]}</Text>
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setShowDifficultyModal(false);
+                setPendingAction(null);
+              }}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -286,11 +366,25 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 14,
     alignItems: 'center',
+    marginBottom: 10,
   },
   secondaryButtonText: {
     color: '#3949AB',
     fontSize: 16,
     fontWeight: '600',
+  },
+  soloButton: {
+    backgroundColor: '#FFF8E1',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#FBC02D',
+    padding: 14,
+    alignItems: 'center',
+  },
+  soloButtonText: {
+    color: '#8D6E00',
+    fontSize: 16,
+    fontWeight: '700',
   },
   hint: {
     color: '#9FA8DA',
@@ -298,5 +392,57 @@ const styles = StyleSheet.create({
     marginTop: 24,
     fontSize: 13,
     paddingHorizontal: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A237E',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#7986CB',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  difficultyButton: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  difficultyButtonText: {
+    color: '#1A237E',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  cancelButton: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#C5CAE9',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#5C6BC0',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

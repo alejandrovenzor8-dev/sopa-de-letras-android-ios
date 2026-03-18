@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+﻿import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Dimensions,
   GestureResponderEvent,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { FoundWord } from '../types';
 
 interface WordGridProps {
@@ -29,10 +30,7 @@ export default function WordGrid({
 
   const [selectedCells, setSelectedCells] = useState<Array<{ row: number; col: number }>>([]);
   const startCell = useRef<{ row: number; col: number } | null>(null);
-  const containerRef = useRef<View>(null);
-  const containerLayout = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Build a lookup of which cells are found and by whom
   const foundCellMap = useRef<Map<string, string>>(new Map());
   foundCellMap.current = new Map();
   Object.values(foundWords).forEach((fw) => {
@@ -42,9 +40,7 @@ export default function WordGrid({
   });
 
   const getCellFromPosition = useCallback(
-    (px: number, py: number): { row: number; col: number } | null => {
-      const localX = px - containerLayout.current.x;
-      const localY = py - containerLayout.current.y;
+    (localX: number, localY: number): { row: number; col: number } | null => {
       const col = Math.floor(localX / cellSize);
       const row = Math.floor(localY / cellSize);
       if (row >= 0 && row < size && col >= 0 && col < size) {
@@ -65,7 +61,6 @@ export default function WordGrid({
       const steps = Math.max(Math.abs(dr), Math.abs(dc));
       if (steps === 0) return [from];
 
-      // Only allow straight lines (horizontal, vertical, diagonal)
       const isDiagonal = Math.abs(dr) === Math.abs(dc);
       const isHorizontal = dr === 0;
       const isVertical = dc === 0;
@@ -87,7 +82,10 @@ export default function WordGrid({
 
   const handleTouchStart = useCallback(
     (e: GestureResponderEvent) => {
-      const cell = getCellFromPosition(e.nativeEvent.pageX, e.nativeEvent.pageY);
+      const cell = getCellFromPosition(
+        e.nativeEvent.locationX,
+        e.nativeEvent.locationY,
+      );
       if (cell) {
         startCell.current = cell;
         setSelectedCells([cell]);
@@ -99,7 +97,10 @@ export default function WordGrid({
   const handleTouchMove = useCallback(
     (e: GestureResponderEvent) => {
       if (!startCell.current) return;
-      const cell = getCellFromPosition(e.nativeEvent.pageX, e.nativeEvent.pageY);
+      const cell = getCellFromPosition(
+        e.nativeEvent.locationX,
+        e.nativeEvent.locationY,
+      );
       if (cell) {
         const line = getCellsInLine(startCell.current, cell);
         setSelectedCells(line);
@@ -124,111 +125,133 @@ export default function WordGrid({
 
   return (
     <View
-      ref={containerRef}
-      onLayout={(e) => {
-        containerRef.current?.measure((_x, _y, _w, _h, pageX, pageY) => {
-          containerLayout.current = { x: pageX, y: pageY };
-        });
-        // Also capture from layout event as fallback
-        containerLayout.current = {
-          x: e.nativeEvent.layout.x,
-          y: e.nativeEvent.layout.y,
-        };
-      }}
       onStartShouldSetResponder={() => true}
       onMoveShouldSetResponder={() => true}
       onResponderGrant={handleTouchStart}
       onResponderMove={handleTouchMove}
       onResponderRelease={handleTouchEnd}
       onResponderTerminate={handleTouchEnd}
-      style={[styles.grid, { width: cellSize * size, height: cellSize * size }]}
+      style={[
+        styles.gridContainer,
+        { width: cellSize * size, height: cellSize * size },
+      ]}
     >
-      {grid.map((row, rIdx) =>
-        row.map((letter, cIdx) => {
-          const key = `${rIdx},${cIdx}`;
-          const isSelected = selectedSet.has(key);
-          const foundColor = foundCellMap.current.get(key);
+      <LinearGradient
+        colors={['#E8EAF6', '#F0F4FF', '#E8EAF6']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          width: cellSize * size,
+          height: cellSize * size,
+          position: 'absolute',
+        }}
+      />
+      <View
+        style={[
+          styles.grid,
+          { width: cellSize * size, height: cellSize * size },
+        ]}
+      >
+        {grid.map((row, rIdx) =>
+          row.map((letter, cIdx) => {
+            const key = `${rIdx},${cIdx}`;
+            const isSelected = selectedSet.has(key);
+            const foundColor = foundCellMap.current.get(key);
 
-          let bgColor = 'transparent';
-          if (isSelected) bgColor = '#FFD600';
-          else if (foundColor) bgColor = foundColor + '55';
+            let bgColor = 'transparent';
+            if (isSelected) bgColor = '#FFD600';
+            else if (foundColor) bgColor = foundColor + '55';
 
-          let textColor = '#1A237E';
-          if (isSelected) textColor = '#000';
-          else if (foundColor) textColor = foundColor;
+            let textColor = '#1A237E';
+            if (isSelected) textColor = '#000';
+            else if (foundColor) textColor = foundColor;
 
-          return (
-            <View
-              key={key}
-              style={[
-                styles.cell,
-                {
-                  width: cellSize,
-                  height: cellSize,
-                  backgroundColor: bgColor,
-                  left: cIdx * cellSize,
-                  top: rIdx * cellSize,
-                },
-              ]}
-            >
-              <Text
+            return (
+              <View
+                key={key}
+                pointerEvents="none"
                 style={[
-                  styles.letter,
-                  { fontSize: cellSize * 0.5, color: textColor },
-                  isSelected && styles.selectedLetter,
-                  !!foundColor && { fontWeight: 'bold' },
+                  styles.cell,
+                  {
+                    width: cellSize,
+                    height: cellSize,
+                    backgroundColor: bgColor,
+                    left: cIdx * cellSize,
+                    top: rIdx * cellSize,
+                  },
                 ]}
               >
-                {letter}
-              </Text>
-            </View>
-          );
-        }),
-      )}
-      {/* Render selection line overlay for found words */}
-      {Object.values(foundWords).map((fw) =>
-        fw.cells.map((cell) => {
-          const key = `found-${fw.word}-${cell.row}-${cell.col}`;
-          return (
-            <View
-              key={key}
-              style={[
-                styles.foundOverlay,
-                {
-                  width: cellSize,
-                  height: cellSize,
-                  left: cell.col * cellSize,
-                  top: cell.row * cellSize,
-                  backgroundColor: fw.color + '44',
-                  borderColor: fw.color,
-                },
-              ]}
-            />
-          );
-        }),
-      )}
-      {/* Render selection line overlay for current selection */}
-      {selectedCells.map((cell) => (
-        <View
-          key={`sel-${cell.row}-${cell.col}`}
-          style={[
-            styles.selectionOverlay,
-            {
-              width: cellSize,
-              height: cellSize,
-              left: cell.col * cellSize,
-              top: cell.row * cellSize,
-              backgroundColor: playerColor + '66',
-              borderColor: playerColor,
-            },
-          ]}
-        />
-      ))}
+                <Text
+                  pointerEvents="none"
+                  style={[
+                    styles.letter,
+                    { fontSize: cellSize * 0.5, color: textColor },
+                    isSelected && styles.selectedLetter,
+                    !!foundColor && { fontWeight: 'bold' },
+                  ]}
+                >
+                  {letter}
+                </Text>
+              </View>
+            );
+          }),
+        )}
+        {Object.values(foundWords).map((fw) =>
+          fw.cells.map((cell) => {
+            const key = `found-${fw.word}-${cell.row}-${cell.col}`;
+            return (
+              <View
+                key={key}
+                pointerEvents="none"
+                style={[
+                  styles.foundOverlay,
+                  {
+                    width: cellSize,
+                    height: cellSize,
+                    left: cell.col * cellSize,
+                    top: cell.row * cellSize,
+                    backgroundColor: fw.color + '66',
+                    borderColor: fw.color,
+                  },
+                ]}
+              />
+            );
+          }),
+        )}
+        {selectedCells.map((cell) => (
+          <View
+            key={`sel-${cell.row}-${cell.col}`}
+            pointerEvents="none"
+            style={[
+              styles.selectionOverlay,
+              {
+                width: cellSize,
+                height: cellSize,
+                left: cell.col * cellSize,
+                top: cell.row * cellSize,
+                backgroundColor: playerColor + '66',
+                borderColor: playerColor,
+              },
+            ]}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  gridContainer: {
+    position: 'relative',
+    alignSelf: 'center',
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#1A237E',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 8,
+  },
   grid: {
     position: 'relative',
     alignSelf: 'center',
@@ -237,19 +260,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#E8EAF6',
+    borderWidth: 0.8,
+    borderColor: '#D0D4E6',
+    backgroundColor: '#FAFBFF',
   },
   letter: {
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
+    color: '#1A237E',
   },
   selectedLetter: {
     fontWeight: 'bold',
   },
   foundOverlay: {
     position: 'absolute',
-    borderWidth: 1,
+    borderWidth: 2,
     borderRadius: 2,
   },
   selectionOverlay: {

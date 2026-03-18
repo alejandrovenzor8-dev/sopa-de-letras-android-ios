@@ -1,7 +1,9 @@
+import { Difficulty } from '../types';
+
 export const GRID_SIZE = 15;
 
 // Maximum random placement attempts per word before giving up
-const MAX_PLACEMENT_ATTEMPTS = 200;
+const MAX_PLACEMENT_ATTEMPTS = 300;
 
 const WORD_LIST = [
   'GATO',
@@ -25,6 +27,23 @@ const WORD_LIST = [
   'CIUDAD',
   'VIENTO',
 ];
+
+export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  facil: 'Facil',
+  medio: 'Medio',
+  dificil: 'Dificil',
+  experto: 'Experto',
+};
+
+export const DIFFICULTY_CONFIG: Record<
+  Difficulty,
+  { size: number; wordsCount: number }
+> = {
+  facil: { size: 8, wordsCount: 5 },
+  medio: { size: 9, wordsCount: 7 },
+  dificil: { size: 11, wordsCount: 9 },
+  experto: { size: 13, wordsCount: 12 },
+};
 
 function shuffle<T>(arr: T[]): T[] {
   const result = [...arr];
@@ -50,6 +69,9 @@ const DIRECTIONS: Direction[] = [
   { dr: 1, dc: 0 },   // ↓
   { dr: -1, dc: 0 },  // ↑
   { dr: 1, dc: 1 },   // ↘
+  { dr: -1, dc: -1 }, // ↖
+  { dr: 1, dc: -1 },  // ↙
+  { dr: -1, dc: 1 },  // ↗
 ];
 
 function canPlace(

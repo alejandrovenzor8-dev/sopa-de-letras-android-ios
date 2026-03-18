@@ -32,6 +32,12 @@ export default function GameScreen({ navigation, route }: Props) {
   const [showWin, setShowWin] = useState(false);
 
   useEffect(() => {
+    if (!db) {
+      Alert.alert('Firebase no configurado', 'Configura las credenciales en src/firebase.ts o variables EXPO_PUBLIC_FIREBASE_*');
+      navigation.navigate('Home');
+      return;
+    }
+
     const roomRef = ref(db, `rooms/${roomCode}`);
     const unsub = onValue(roomRef, (snapshot) => {
       if (!snapshot.exists()) {
@@ -48,7 +54,7 @@ export default function GameScreen({ navigation, route }: Props) {
         // Reactively mark game as finished when all words are found
         const foundCount = Object.keys(data.foundWords ?? {}).length;
         if (foundCount >= data.words.length) {
-          update(ref(db, `rooms/${roomCode}`), { status: 'finished' });
+          update(ref(db!, `rooms/${roomCode}`), { status: 'finished' });
         }
       }
     });
@@ -57,6 +63,7 @@ export default function GameScreen({ navigation, route }: Props) {
 
   const handleWordFound = useCallback(
     async (cells: Array<{ row: number; col: number }>, word: string) => {
+      if (!db) return;
       if (!room?.words) return;
 
       const upperWord = word.toUpperCase();
@@ -84,6 +91,10 @@ export default function GameScreen({ navigation, route }: Props) {
   );
 
   const handleExit = () => {
+    if (!db) {
+      navigation.navigate('Home');
+      return;
+    }
     Alert.alert('Salir', '¿Seguro que quieres abandonar la partida?', [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -91,7 +102,7 @@ export default function GameScreen({ navigation, route }: Props) {
         style: 'destructive',
         onPress: async () => {
           try {
-            await remove(ref(db, `rooms/${roomCode}/players/${playerId}`));
+            await remove(ref(db!, `rooms/${roomCode}/players/${playerId}`));
           } catch {
             // ignore
           }
@@ -102,6 +113,10 @@ export default function GameScreen({ navigation, route }: Props) {
   };
 
   const handlePlayAgain = async () => {
+    if (!db) {
+      navigation.navigate('Home');
+      return;
+    }
     setShowWin(false);
     try {
       await remove(ref(db, `rooms/${roomCode}`));

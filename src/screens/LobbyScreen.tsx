@@ -14,7 +14,12 @@ import { RouteProp } from '@react-navigation/native';
 import { ref, onValue, update, remove } from 'firebase/database';
 import { db } from '../firebase';
 import { GameRoom, RootStackParamList } from '../types';
-import { generateGrid, pickWords, GRID_SIZE } from '../utils/wordGenerator';
+import {
+  DIFFICULTY_CONFIG,
+  DIFFICULTY_LABELS,
+  generateGrid,
+  pickWords,
+} from '../utils/wordGenerator';
 import PlayerList from '../components/PlayerList';
 
 type LobbyNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Lobby'>;
@@ -31,6 +36,12 @@ export default function LobbyScreen({ navigation, route }: Props) {
   const [starting, setStarting] = useState(false);
 
   useEffect(() => {
+    if (!db) {
+      Alert.alert('Firebase no configurado', 'Configura las credenciales en src/firebase.ts o variables EXPO_PUBLIC_FIREBASE_*');
+      navigation.navigate('Home');
+      return;
+    }
+
     const roomRef = ref(db, `rooms/${roomCode}`);
     const unsub = onValue(roomRef, (snapshot) => {
       if (!snapshot.exists()) {
@@ -55,11 +66,17 @@ export default function LobbyScreen({ navigation, route }: Props) {
   }, [roomCode, playerId, playerName, navigation]);
 
   const handleStartGame = async () => {
+    if (!db) {
+      Alert.alert('Firebase no configurado', 'Configura las credenciales en src/firebase.ts o variables EXPO_PUBLIC_FIREBASE_*');
+      return;
+    }
     if (!room) return;
     setStarting(true);
     try {
-      const words = pickWords(8);
-      const grid = generateGrid(words, GRID_SIZE);
+      const difficulty = room.difficulty ?? 'medio';
+      const config = DIFFICULTY_CONFIG[difficulty];
+      const words = pickWords(config.wordsCount);
+      const grid = generateGrid(words, config.size);
       await update(ref(db, `rooms/${roomCode}`), {
         status: 'playing',
         words,
@@ -73,6 +90,10 @@ export default function LobbyScreen({ navigation, route }: Props) {
   };
 
   const handleLeave = async () => {
+    if (!db) {
+      navigation.navigate('Home');
+      return;
+    }
     Alert.alert('Salir', '¿Seguro que quieres salir de la sala?', [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -81,9 +102,9 @@ export default function LobbyScreen({ navigation, route }: Props) {
         onPress: async () => {
           try {
             if (isHost) {
-              await remove(ref(db, `rooms/${roomCode}`));
+              await remove(ref(db!, `rooms/${roomCode}`));
             } else {
-              await remove(ref(db, `rooms/${roomCode}/players/${playerId}`));
+              await remove(ref(db!, `rooms/${roomCode}/players/${playerId}`));
             }
           } catch {
             // ignore
@@ -119,6 +140,9 @@ export default function LobbyScreen({ navigation, route }: Props) {
         <View style={styles.codeCard}>
           <Text style={styles.codeLabel}>Código de sala</Text>
           <Text style={styles.code}>{roomCode}</Text>
+          <Text style={styles.difficultyText}>
+            Dificultad: {DIFFICULTY_LABELS[room.difficulty ?? 'medio']}
+          </Text>
           <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
             <Text style={styles.shareButtonText}>📤 Compartir</Text>
           </TouchableOpacity>
@@ -202,6 +226,12 @@ const styles = StyleSheet.create({
     color: '#1A237E',
     letterSpacing: 8,
     marginBottom: 12,
+  },
+  difficultyText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#5C6BC0',
+    marginBottom: 10,
   },
   shareButton: {
     backgroundColor: '#E8EAF6',

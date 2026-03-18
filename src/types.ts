@@ -5,6 +5,8 @@ export interface Player {
   color: string;
 }
 
+export type Difficulty = 'facil' | 'medio' | 'dificil' | 'experto';
+
 export interface FoundWord {
   word: string;
   foundBy: string; // player id
@@ -17,6 +19,7 @@ export interface GameRoom {
   code: string;
   hostId: string;
   status: 'waiting' | 'playing' | 'finished';
+  difficulty: Difficulty;
   players: Record<string, Player>;
   grid?: string[][];
   words?: string[];
@@ -37,5 +40,9 @@ export type RootStackParamList = {
     playerId: string;
     playerName: string;
     playerColor: string;
+  };
+  Solo: {
+    playerName: string;
+    difficulty: Difficulty;
   };
 };
