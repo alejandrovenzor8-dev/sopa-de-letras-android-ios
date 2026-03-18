@@ -44,6 +44,12 @@ export default function GameScreen({ navigation, route }: Props) {
 
       if (data.status === 'finished') {
         setShowWin(true);
+      } else if (data.status === 'playing' && data.words) {
+        // Reactively mark game as finished when all words are found
+        const foundCount = Object.keys(data.foundWords ?? {}).length;
+        if (foundCount >= data.words.length) {
+          update(ref(db, `rooms/${roomCode}`), { status: 'finished' });
+        }
       }
     });
     return () => unsub();
@@ -73,12 +79,6 @@ export default function GameScreen({ navigation, route }: Props) {
         [`foundWords/${upperWord}`]: foundWord,
         [`players/${playerId}/score`]: currentScore + 1,
       });
-
-      // Check if all words found
-      const totalFound = Object.keys(room.foundWords ?? {}).length + 1;
-      if (totalFound >= room.words.length) {
-        await update(ref(db, `rooms/${roomCode}`), { status: 'finished' });
-      }
     },
     [room, playerId, playerName, playerColor, roomCode],
   );

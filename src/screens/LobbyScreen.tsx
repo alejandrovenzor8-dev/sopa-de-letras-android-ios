@@ -134,9 +134,9 @@ export default function LobbyScreen({ navigation, route }: Props) {
 
         {isHost ? (
           <TouchableOpacity
-            style={[styles.startButton, playerCount < 1 && styles.disabledButton]}
+            style={[styles.startButton, playerCount === 0 && styles.disabledButton]}
             onPress={handleStartGame}
-            disabled={starting || playerCount < 1}
+            disabled={starting || playerCount === 0}
           >
             {starting ? (
               <ActivityIndicator color="#fff" />

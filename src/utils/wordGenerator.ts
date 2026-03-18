@@ -1,5 +1,8 @@
 export const GRID_SIZE = 15;
 
+// Maximum random placement attempts per word before giving up
+const MAX_PLACEMENT_ATTEMPTS = 200;
+
 const WORD_LIST = [
   'GATO',
   'PERRO',
@@ -86,7 +89,7 @@ export function generateGrid(words: string[], size: number = GRID_SIZE): string[
   for (const word of words) {
     let placed = false;
     let attempts = 0;
-    while (!placed && attempts < 200) {
+    while (!placed && attempts < MAX_PLACEMENT_ATTEMPTS) {
       attempts++;
       const dir = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
       const row = Math.floor(Math.random() * size);
