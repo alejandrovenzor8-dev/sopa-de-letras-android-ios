@@ -9,14 +9,20 @@ import { Database, getDatabase } from 'firebase/database';
 // 5. Set database rules to allow read/write during development:
 //    { "rules": { ".read": true, ".write": true } }
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? 'YOUR_API_KEY',
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN ?? 'YOUR_AUTH_DOMAIN',
-  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL ?? 'YOUR_DATABASE_URL',
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ?? 'YOUR_PROJECT_ID',
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET ?? 'YOUR_STORAGE_BUCKET',
+  apiKey:
+    process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? 'AIzaSyC4TjF1yyehKnBlP-8dNqMRTgzz9TlNduQ',
+  authDomain:
+    process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN ?? 'sopa-de-letras-online-venz.firebaseapp.com',
+  databaseURL:
+    process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL ?? 'https://sopa-de-letras-online-venz-default-rtdb.firebaseio.com/',
+  projectId:
+    process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ?? 'sopa-de-letras-online-venz',
+  storageBucket:
+    process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET ?? 'sopa-de-letras-online-venz.firebasestorage.app',
   messagingSenderId:
-    process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? 'YOUR_MESSAGING_SENDER_ID',
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID ?? 'YOUR_APP_ID',
+    process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '334485345606',
+  appId:
+    process.env.EXPO_PUBLIC_FIREBASE_APP_ID ?? '1:334485345606:web:375669665a6e9b35b00147',
 };
 
 const isMissingConfig = Object.values(firebaseConfig).some(
